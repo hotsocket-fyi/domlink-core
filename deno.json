@@ -1,0 +1,13 @@
+{
+	"name": "@domlink/core",
+	"version": "0.1.0",
+	"license": "LGPL-3.0-only",
+	"exports": "./domlink.ts",
+	"exclude": ["node_modules", "out"],
+	"tasks": {
+		"dev": "deno run --watch main.ts"
+	},
+	"compilerOptions": {
+		"lib": ["dom", "es2017", "dom.iterable", "deno.ns"]
+	}
+}

@@ -1,0 +1,8 @@
+.vscode
+.direnv
+out
+node_modules
+certs
+
+# Local Netlify folder
+.netlify
