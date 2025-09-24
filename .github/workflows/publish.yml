@@ -1,0 +1,24 @@
+{
+  "name": "Publish to JSR",
+  "on": { "push": { "branches": ["main"] } },
+  "jobs":
+    {
+      "publish":
+        {
+          "runs-on": "ubuntu-24.04",
+          "permissions": { "contents": "read", "id-token": "write" },
+          "steps":
+            [
+              { "uses": "actions/checkout@v4" },
+              {
+                "name": "Install Nix",
+                "uses": "cachix/install-nix-action@v31.6.2",
+              },
+              {
+                "name": "Publish Package",
+                "run": "nix develop --command deno publish",
+              },
+            ],
+        },
+    },
+}
