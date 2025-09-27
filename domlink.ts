@@ -19,13 +19,14 @@ export class Node {
 	/** Adds a child node. Should not be overridden. */
 	add(node: NodeEquivalent): this {
 		if (node != undefined) {
-			let xnode: Node;
+			let xnode: Node | Label;
 			if (typeof node === "string") {
+				// why i can't just smash `as Node` in here, i don't know.
 				xnode = new Label(node);
 			} else {
 				xnode = node;
 			}
-			this.children.push(xnode);
+			this.children.push(xnode as Node);
 			this.wraps.appendChild(xnode.wraps);
 		} else {
 			throw new Error("node undefined");
@@ -67,14 +68,19 @@ export class Node {
 		this.wraps.classList.add(cls);
 		return this;
 	}
-	get classes(): string[] {
+	/** Returns the wrapped element's classList as an array. */
+	getClasses(): string[] {
 		return [...this.wraps.classList];
 	}
-	/** Hopefully, this points at the parent element. */
-	get parent(): Node | undefined {
+	/** Gets the parent node.
+	 * @returns Returns `undefined` if either the node has no parent, or the wrapped element's parent is not a node.
+	 */
+	getParent(): Node | undefined {
 		if (this.wraps.parentElement == null) return undefined;
 		return NodeMap.get(this.wraps.parentElement);
 	}
+
+	/** Helper similar to {@link style} that feeds your callback the node itself. */
 	x(worker: (self: Node) => void): Node {
 		worker(this);
 		return this;
@@ -90,8 +96,9 @@ export class Node {
 	protected serverRenderBaseAttributes(): string {
 		const otherOut: string[] = [];
 		//otherOut.push(`id="${this.id}"`)
-		if (this.classes.length > 0) {
-			otherOut.push(`class="${this.classes.join(" ")}"`);
+		const classes = this.getClasses();
+		if (classes.length > 0) {
+			otherOut.push(`class="${classes.join(" ")}"`);
 		}
 		if (this.wraps.style.cssText != "") {
 			otherOut.push(`style="${this.wraps.style.cssText}"`);
@@ -100,14 +107,14 @@ export class Node {
 	}
 	/** Renders out this node and its children to an HTML string.
 	 *
-	 * **`import "@/domlink_server.ts";` needs be placed before your DomLink import.**
+	 * **`import "jsr:@domlink/headless";` needs be placed before your DomLink import.**
 	 *
 	 * Limitations to be aware of:
 	 *  - Interactive elements such as {@link Button} or {@link Input} will not be functional.
 	 *  - External CSS files are preferred, but if you have to,
 	 *    `wraps.style.cssText` is the only way to style a {@link Node} inline.
 	 */
-	protected serverRender(): string {
+	serverRender(): string {
 		const result = `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()}>${this.serverRenderChildren()}</${this.wraps.tagName}>`;
 		_LCounter = 0;
 		return result;
@@ -130,26 +137,28 @@ export class Link extends Node {
 			this.add(around);
 		}
 	}
-	set destination(x: string) {
+	setDestination(x: string) {
 		(this.wraps as HTMLAnchorElement).href = x;
 	}
 	// noinspection JSUnusedGlobalSymbols
-	get destination(): string {
+	getDestination(): string {
 		return (this.wraps as HTMLAnchorElement).href;
 	}
-	set target(x: string) {
+	setTarget(x: string) {
 		(this.wraps as HTMLAnchorElement).target = x;
 	}
-	get target(): string {
+	getTarget(): string {
 		return (this.wraps as HTMLAnchorElement).target;
 	}
 	to(dst: string, tgt: LinkTarget = LinkTarget.NEW_TAB): this {
-		this.destination = dst;
-		this.target = tgt;
+		this.setDestination(dst);
+		this.setTarget(tgt);
 		return this;
 	}
-	protected override serverRender(): string {
-		return `<a href="${this.destination}" ${this.target != "" ? `target="${this.target}"` : ""}>${this.serverRenderChildren()}</a>`;
+	override serverRender(): string {
+		const destination = this.getDestination();
+		const target = this.getTarget();
+		return `<a href="${destination}" ${target != "" ? `target="${target}"` : ""}>${this.serverRenderChildren()}</a>`;
 	}
 }
 /** Wrapper for {@link HTMLDivElement `<div>`} w/ methods to set up a d/d target */
@@ -218,17 +227,17 @@ export class TableCell extends Node {
 }
 /** An "abstract" class of sorts for {@link HTMLElement}s that have a textContent member.*/
 export class Text extends Node {
-	private _text: string = "";
-	get text(): string {
+	protected _text: string = "";
+	getText(): string {
 		return this._text;
 	}
-	set text(x: string) {
+	setText(x: string) {
 		this._text = x;
 		this.wraps.textContent = x;
 	}
 	/** A raw text node is used as a literal string of text in this context */
-	protected override serverRender(): string {
-		return this.text;
+	override serverRender(): string {
+		return this._text;
 		//return `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()}>${this.text}</${this.wraps.tagName}>`;
 	}
 }
@@ -238,7 +247,7 @@ export class Label extends Text {
 		const el = document.createElement("span");
 		el.classList.add("LLabel");
 		super(el);
-		this.text = text;
+		this.setText(text);
 	}
 }
 /** Wrapper for {@link HTMLButtonElement `<button>`} */
@@ -250,7 +259,7 @@ export class Button extends Text {
 		btn.addEventListener("click", action);
 		btn.classList.add("LButton");
 		super(btn);
-		this.text = label;
+		this.setText(label);
 	}
 }
 /** Interface providing {@link Updatable.watch} */
@@ -265,13 +274,13 @@ export class Input extends Text implements Updatable<string> {
 		el.classList.add("LInput");
 		super(el);
 	}
-	set placeholder(x: string) {
+	setPlaceholder(x: string) {
 		(this.wraps as HTMLInputElement).placeholder = x;
 	}
-	get value(): string {
+	getValue(): string {
 		return (this.wraps as HTMLInputElement).value;
 	}
-	set value(x: string) {
+	setValue(x: string) {
 		(this.wraps as HTMLInputElement).value = x;
 		this.watching.forEach((y) => y(x));
 	}
@@ -281,9 +290,9 @@ export class Input extends Text implements Updatable<string> {
 	watch(watcher: (newValue: string) => void) {
 		this.watching.push(watcher);
 		this.wraps.oninput = () => {
-			watcher(this.value);
+			watcher(this.getValue());
 		};
-		watcher(this.value);
+		watcher(this.getValue());
 	}
 }
 /** Wrapper for {@link HTMLImageElement `<img>`} */
@@ -294,7 +303,7 @@ export class Image extends Node {
 		img.classList.add("LImage");
 		super(img);
 	}
-	protected override serverRender(): string {
+	override serverRender(): string {
 		return `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()} src="${(this.wraps as HTMLImageElement).src}">`;
 	}
 }
@@ -329,7 +338,7 @@ class _Environment {
 		return node;
 	}
 	private knownTitle: Text | null = null;
-	set title(newTitle: string) {
+	setTitle(newTitle: string) {
 		if (!this.knownTitle) {
 			const found = Head.children.find((n) => n.wraps.tagName == "title");
 			if (found) {
@@ -338,7 +347,7 @@ class _Environment {
 				this.knownTitle = new Text(document.createElement("title"));
 			}
 		}
-		this.knownTitle.text = newTitle;
+		this.knownTitle.setText(newTitle);
 	}
 }
 export const Environment: _Environment = new _Environment();
