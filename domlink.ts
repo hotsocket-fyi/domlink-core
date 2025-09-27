@@ -1,3 +1,4 @@
+//@ts-check
 let _LCounter = 0;
 const NodeMap = new WeakMap<HTMLElement, Node>();
 
@@ -16,7 +17,7 @@ export class Node {
 		NodeMap.set(this.wraps, this);
 	}
 	/** Adds a child node. Should not be overridden. */
-	add(node: NodeEquivalent) {
+	add(node: NodeEquivalent): this {
 		if (node != undefined) {
 			let xnode: Node;
 			if (typeof node === "string") {
@@ -33,7 +34,7 @@ export class Node {
 	}
 	/** Works similarly to {@link add}, but takes multiple nodes and is the one you would want to override.
 	 * (which is discouraged but yk) */
-	with(...nodes: NodeEquivalent[]) {
+	with(...nodes: NodeEquivalent[]): this {
 		nodes.forEach((x) => {
 			this.add(x);
 		});
@@ -56,13 +57,13 @@ export class Node {
 	}
 	/** Conveniently chain-able callback thing for styling your nodes.
 	 * @example new Label("This is a label!").style((s)=>{s.color="maroon";}) */
-	style(fn: (style: CSSStyleDeclaration) => void) {
+	style(fn: (style: CSSStyleDeclaration) => void): this {
 		fn(this.wraps.style);
 		return this;
 	}
 	/** Adds a CSS class to your node.
 	 * @example new Container().class("my-class") */
-	class(cls: string) {
+	class(cls: string): this {
 		this.wraps.classList.add(cls);
 		return this;
 	}
@@ -142,12 +143,12 @@ export class Link extends Node {
 	get target(): string {
 		return (this.wraps as HTMLAnchorElement).target;
 	}
-	to(dst: string, tgt: LinkTarget = LinkTarget.NEW_TAB) {
+	to(dst: string, tgt: LinkTarget = LinkTarget.NEW_TAB): this {
 		this.destination = dst;
 		this.target = tgt;
 		return this;
 	}
-	protected override serverRender() {
+	protected override serverRender(): string {
 		return `<a href="${this.destination}" ${this.target != "" ? `target="${this.target}"` : ""}>${this.serverRenderChildren()}</a>`;
 	}
 }
@@ -158,7 +159,7 @@ export class Container extends Node {
 		div.classList.add("LContainer");
 		super(div);
 	}
-	draggable(type: string, data: string) {
+	draggable(type: string, data: string): this {
 		this.wraps.draggable = true;
 		this.wraps.ondragstart = (e) => {
 			if (e.dataTransfer) {
@@ -167,12 +168,13 @@ export class Container extends Node {
 		};
 		return this;
 	}
-	droppable(type: string, handler: (e: DragEvent) => void) {
+	droppable(type: string, handler: (e: DragEvent) => void): this {
 		this.wraps.ondragover = (e) => e.preventDefault(); // allow drop
 		this.wraps.ondrop = (e) => {
 			e.preventDefault();
 			handler(e);
 		};
+		return this;
 	}
 }
 
@@ -217,10 +219,10 @@ export class TableCell extends Node {
 /** An "abstract" class of sorts for {@link HTMLElement}s that have a textContent member.*/
 export class Text extends Node {
 	private _text: string = "";
-	get text() {
+	get text(): string {
 		return this._text;
 	}
-	set text(x) {
+	set text(x: string) {
 		this._text = x;
 		this.wraps.textContent = x;
 	}
@@ -315,10 +317,10 @@ export class Modal extends Node {
 	}
 }
 
-export const Head = new Node(document.head);
+export const Head: Node = new Node(document.head);
 // a stroke of genius!
 class _Environment {
-	loadStylesheet(path: string) {
+	loadStylesheet(path: string): Node {
 		const style = document.createElement("link");
 		style.rel = "stylesheet";
 		style.href = path;
@@ -339,7 +341,7 @@ class _Environment {
 		this.knownTitle.text = newTitle;
 	}
 }
-export const Environment = new _Environment();
+export const Environment: _Environment = new _Environment();
 
 /** Convenience wrapper for the {@link HTMLBodyElement body} of the document. */
-export const Body = new Node(document.body);
+export const Body: Node = new Node(document.body);

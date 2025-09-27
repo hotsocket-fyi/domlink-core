@@ -9,5 +9,10 @@
 	},
 	"compilerOptions": {
 		"lib": ["dom", "es2017", "dom.iterable", "deno.ns"]
+	},
+	"lint": {
+		"rules": {
+			"tags": ["recommended", "jsr"]
+		}
 	}
 }
