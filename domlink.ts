@@ -115,8 +115,8 @@ export class Node {
 	 *    `wraps.style.cssText` is the only way to style a {@link Node} inline.
 	 */
 	serverRender(): string {
-		const result = `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()}>${this.serverRenderChildren()}</${this.wraps.tagName}>`;
-		_LCounter = 0;
+		const result =
+			`<${this.wraps.tagName} ${this.serverRenderBaseAttributes()}>${this.serverRenderChildren()}</${this.wraps.tagName}>`;
 		return result;
 	}
 }
@@ -158,7 +158,9 @@ export class Link extends Node {
 	override serverRender(): string {
 		const destination = this.getDestination();
 		const target = this.getTarget();
-		return `<a href="${destination}" ${target != "" ? `target="${target}"` : ""}>${this.serverRenderChildren()}</a>`;
+		return `<a href="${destination}" ${
+			target != "" ? `target="${target}"` : ""
+		}>${this.serverRenderChildren()}</a>`;
 	}
 }
 /** Wrapper for {@link HTMLDivElement `<div>`} w/ methods to set up a d/d target */
@@ -304,7 +306,9 @@ export class Image extends Node {
 		super(img);
 	}
 	override serverRender(): string {
-		return `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()} src="${(this.wraps as HTMLImageElement).src}">`;
+		return `<${this.wraps.tagName} ${this.serverRenderBaseAttributes()} src="${
+			(this.wraps as HTMLImageElement).src
+		}">`;
 	}
 }
 /** Wrapper for {@link HTMLDialogElement `<dialog>`} with methods to show/hide it as a modal. */
@@ -326,31 +330,59 @@ export class Modal extends Node {
 	}
 }
 
+class Title extends Text {
+	override serverRender(): string {
+		return `<title>${this._text}</title>`;
+	}
+}
+
+/** Wrapper for {@link HTMLLinkElement `<link>`} */
+export class Reference extends Text {
+	private rel: string;
+	private href: string;
+	constructor(rel: string, href: string) {
+		super(document.createElement("link"));
+		this.wraps.rel = rel;
+		this.rel = rel;
+		this.wraps.href = href;
+		this.href = href;
+	}
+	override serverRender(): string {
+		return `<link rel="${this.rel}" href="${this.href}">`;
+	}
+}
+
 export const Head: Node = new Node(document.head);
-// a stroke of genius!
-class _Environment {
-	loadStylesheet(path: string): Node {
-		const style = document.createElement("link");
-		style.rel = "stylesheet";
-		style.href = path;
-		const node = new Node(style);
+
+/** Class containing document helper functions */
+export class Environment {
+	/** Creates a link element and points it at a specified stylesheet. */
+	static useStylesheet(path: string): Node {
+		const node = new Reference("stylesheet", path);
 		Head.with(node);
 		return node;
 	}
-	private knownTitle: Text | null = null;
-	setTitle(newTitle: string) {
+	private static knownTitle: Title | null = null;
+	/** Creates a title element if necessary, and sets its content to `newTitle`. */
+	static setTitle(newTitle: string) {
 		if (!this.knownTitle) {
 			const found = Head.children.find((n) => n.wraps.tagName == "title");
 			if (found) {
-				this.knownTitle = found as Text;
+				this.knownTitle = found as Title;
 			} else {
-				this.knownTitle = new Text(document.createElement("title"));
+				this.knownTitle = new Title(document.createElement("title"));
+				Head.with(this.knownTitle);
 			}
 		}
 		this.knownTitle.setText(newTitle);
 	}
+	/** Renders head, body inside HTML tags out to a string. */
+	static serverRender() {
+		const ret = `<html>${Head.serverRender()}${Body.serverRender()}</html>`;
+		_LCounter = 0;
+		return ret;
+	}
 }
-export const Environment: _Environment = new _Environment();
 
 /** Convenience wrapper for the {@link HTMLBodyElement body} of the document. */
 export const Body: Node = new Node(document.body);
