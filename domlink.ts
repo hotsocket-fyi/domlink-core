@@ -342,9 +342,9 @@ export class Reference extends Text {
 	private href: string;
 	constructor(rel: string, href: string) {
 		super(document.createElement("link"));
-		this.wraps.rel = rel;
+		(this.wraps as HTMLLinkElement).rel = rel;
+		(this.wraps as HTMLLinkElement).href = href;
 		this.rel = rel;
-		this.wraps.href = href;
 		this.href = href;
 	}
 	override serverRender(): string {
@@ -377,7 +377,7 @@ export class Environment {
 		this.knownTitle.setText(newTitle);
 	}
 	/** Renders head, body inside HTML tags out to a string. */
-	static serverRender() {
+	static serverRender(): string {
 		const ret = `<html>${Head.serverRender()}${Body.serverRender()}</html>`;
 		_LCounter = 0;
 		return ret;
